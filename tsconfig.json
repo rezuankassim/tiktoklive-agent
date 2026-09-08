@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
+    "jsx": "react-jsx",
     "lib": ["ES2022", "DOM"],
     "allowJs": false,
     "skipLibCheck": true,
@@ -11,10 +12,13 @@
     "exactOptionalPropertyTypes": true,
     "sourceMap": true,
     "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "outDir": "dist",
     "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "*.ts"]
 }

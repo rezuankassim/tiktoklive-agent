@@ -30,6 +30,13 @@ let tray: Tray | null = null;
 let service: AgentService;
 let isQuitting = false;
 
+function iconPath(fileName: string): string {
+  const baseDirectory = app.isPackaged
+    ? process.resourcesPath
+    : app.getAppPath();
+  return path.join(baseDirectory, "assets", fileName);
+}
+
 function configureUpdates(): void {
   if (
     !app.isPackaged ||
@@ -41,10 +48,21 @@ function configureUpdates(): void {
   autoUpdater.setFeedURL({ url: feedUrl });
 }
 
-function createWindow(): BrowserWindow {
+function loadWindowContent(window: BrowserWindow): void {
+  if (!app.isPackaged && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    void window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+  } else {
+    void window.loadFile(
+      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+    );
+  }
+}
+
+function createWindow(loadContent = true): BrowserWindow {
   const window = new BrowserWindow({
-    width: 440,
-    height: 670,
+    icon: iconPath("icon.png"),
+    width: 480,
+    height: 760,
     minWidth: 400,
     minHeight: 580,
     show: false,
@@ -66,13 +84,7 @@ function createWindow(): BrowserWindow {
     if (!url.startsWith("file:") && !localDevelopmentPage)
       event.preventDefault();
   });
-  if (!app.isPackaged && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    void window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
-    void window.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
-    );
-  }
+  if (loadContent) loadWindowContent(window);
   window.on("close", (event) => {
     if (!isQuitting) {
       event.preventDefault();
@@ -130,6 +142,9 @@ function validateSettings(value: unknown): SettingsPatch {
 }
 
 async function bootstrap(): Promise<void> {
+  if (process.platform === "darwin") {
+    app.dock?.setIcon(iconPath("icon.png"));
+  }
   const dataDirectory = app.getPath("userData");
   const privateTemporaryDirectory = path.join(
     app.getPath("temp"),
@@ -147,7 +162,7 @@ async function bootstrap(): Promise<void> {
     safeStorage,
   );
   const devices = new DeviceStore(path.join(dataDirectory, "device.json"));
-  mainWindow = createWindow();
+  mainWindow = createWindow(false);
   const testPagePath = app.isPackaged
     ? path.join(
         __dirname,
@@ -221,9 +236,8 @@ async function bootstrap(): Promise<void> {
     await autoUpdater.checkForUpdates();
   });
 
-  const icon = nativeImage.createFromDataURL(
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAKUlEQVR42mNgGAWjYBSMglEwCkbBKBgFo2AUjIJRMApGwSgYBaNgFIwCAAAEEAAB0q6fNwAAAABJRU5ErkJggg==",
-  );
+  const icon = nativeImage.createFromPath(iconPath("tray.png"));
+  if (icon.isEmpty()) throw new Error("The tray icon could not be loaded.");
   tray = new Tray(icon);
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -240,7 +254,9 @@ async function bootstrap(): Promise<void> {
   );
   tray.on("click", showWindow);
   await service.start();
-  if (!service.getStatus().paired) showWindow();
+  loadWindowContent(mainWindow);
+  const openedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin;
+  if (!openedAtLogin || !service.getStatus().paired) showWindow();
   configureUpdates();
   if (app.isPackaged && LOCKBAH_UPDATE_URL) void autoUpdater.checkForUpdates();
 }

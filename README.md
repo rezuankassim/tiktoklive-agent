@@ -12,7 +12,7 @@ cp .env.example .env
 npm start
 ```
 
-Development builds may set `LOCKBAH_API_BASE_URL=http://localhost:8000`. Packaged builds reject non-HTTPS API URLs and default to `https://lockbah.com`.
+Development builds may set `LOCKBAH_API_BASE_URL=http://localhost:8000`. Packaged builds always use `https://lockbah.com`, including when a development URL remains in the local settings file.
 
 ```sh
 npm run check

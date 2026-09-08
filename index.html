@@ -5,86 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ws://localhost:*; img-src 'self' data:"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:*; img-src 'self' data:"
     />
     <title>Lockbah Print Agent</title>
   </head>
   <body>
-    <main>
-      <header class="brand">
-        <div class="mark">L</div>
-        <div>
-          <h1>Lockbah Print Agent</h1>
-          <p class="subtitle">Local printer connection</p>
-        </div>
-      </header>
-      <section id="pairing" class="card" hidden>
-        <h2>Pair this computer</h2>
-        <p class="help">
-          Enter the single-use code shown in Lockbah. The code expires after a
-          short time.
-        </p>
-        <form id="pair-form">
-          <label for="pairing-code">Pairing code</label
-          ><input
-            id="pairing-code"
-            class="pair-code"
-            placeholder="ABCD-EFGH"
-            maxlength="9"
-            autocomplete="off"
-            required
-          /><label for="device-name-input">Device name</label
-          ><input
-            id="device-name-input"
-            placeholder="Packing laptop"
-            maxlength="80"
-            required
-          />
-          <p id="pair-error" class="message error" role="alert"></p>
-          <button id="pair-button" type="submit">Pair device</button>
-        </form>
-      </section>
-      <section id="dashboard" class="card" hidden>
-        <h2 id="device-name">Paired device</h2>
-        <div class="status-grid">
-          <div class="status">
-            <span>Connection</span
-            ><strong id="connection-status">Disconnected</strong>
-          </div>
-          <div class="status">
-            <span>Printer</span><strong id="printer-status">None</strong>
-          </div>
-          <div class="status">
-            <span>Current job</span><strong id="job-status">Idle</strong>
-          </div>
-          <div class="status">
-            <span>Last error</span><strong id="last-error">None</strong>
-          </div>
-        </div>
-        <label for="printer">System printer</label>
-        <div class="row">
-          <select id="printer"></select
-          ><button id="refresh-printers" class="secondary" type="button">
-            Refresh
-          </button>
-        </div>
-        <label class="switch"
-          ><input id="launch-at-login" type="checkbox" />Start after
-          sign-in</label
-        >
-        <div class="actions">
-          <button id="test-print" type="button">Print test page</button
-          ><button id="export-logs" class="secondary" type="button">
-            Export logs</button
-          ><button id="check-updates" class="secondary" type="button">
-            Check for updates</button
-          ><button id="unpair" class="danger" type="button">
-            Unpair device
-          </button>
-        </div>
-        <p id="action-message" class="message" aria-live="polite"></p>
-      </section>
-    </main>
-    <script type="module" src="/src/renderer.ts"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/renderer.tsx"></script>
   </body>
 </html>

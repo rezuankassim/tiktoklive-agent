@@ -6,6 +6,9 @@ on:
 permissions:
   contents: read
 
+env:
+  LOCKBAH_API_BASE_URL: https://lockbah.com
+
 jobs:
   build:
     runs-on: windows-latest

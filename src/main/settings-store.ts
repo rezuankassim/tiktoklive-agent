@@ -33,10 +33,9 @@ export class SettingsStore {
   }
 
   private validate(value: Preferences): Preferences {
-    const url = new URL(value.apiBaseUrl);
-    if (this.isPackaged && url.protocol !== "https:") {
-      throw new Error("Production API requests require HTTPS.");
-    }
+    const url = new URL(
+      this.isPackaged ? PRODUCTION_API_BASE_URL : value.apiBaseUrl,
+    );
     if (value.pollingIntervalMs < 1_000 || value.pollingIntervalMs > 30_000) {
       throw new Error("Polling interval must be between 1 and 30 seconds.");
     }

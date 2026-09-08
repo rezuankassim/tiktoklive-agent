@@ -6,11 +6,14 @@ import { MakerRpm } from "@electron-forge/maker-rpm";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
+import path from "node:path";
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: "LockbahPrintAgent",
+    extraResource: [path.resolve(__dirname, "assets")],
+    icon: path.resolve(__dirname, "assets", "icon"),
     win32metadata: {
       CompanyName: "Lockbah",
       FileDescription: "Lockbah Print Agent",
@@ -24,6 +27,7 @@ const config: ForgeConfig = {
     new MakerSquirrel({
       name: "LockbahPrintAgent",
       setupExe: "LockbahPrintAgentSetup.exe",
+      setupIcon: path.resolve(__dirname, "assets", "icon.ico"),
       ...(process.env.WINDOWS_CERTIFICATE_FILE &&
       process.env.WINDOWS_CERTIFICATE_PASSWORD
         ? {
