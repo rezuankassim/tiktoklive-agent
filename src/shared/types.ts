@@ -72,6 +72,11 @@ export interface SettingsPatch {
   apiBaseUrl?: string;
 }
 
+export interface UpdateCheckResult {
+  status: "started" | "unavailable";
+  message: string;
+}
+
 export interface RendererApi {
   getStatus(): Promise<AgentStatus>;
   pair(input: PairInput): Promise<void>;
@@ -80,6 +85,6 @@ export interface RendererApi {
   updateSettings(patch: SettingsPatch): Promise<void>;
   printTestPage(): Promise<void>;
   exportLogs(): Promise<string | null>;
-  checkForUpdates(): Promise<void>;
+  checkForUpdates(): Promise<UpdateCheckResult>;
   onStatus(callback: (status: AgentStatus) => void): () => void;
 }

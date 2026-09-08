@@ -3,22 +3,13 @@ import {
   type PrinterInfo as ElectronPrinterInfo,
 } from "electron";
 import { pathToFileURL } from "node:url";
-import type { PrintOptions, PrinterInfo, PrinterStatus } from "../shared/types";
+import type { PrintOptions, PrinterInfo } from "../shared/types";
 import {
   PrintFailure,
   type PrintAdapter,
   type PrintResult,
 } from "./print-contract";
-
-function printerStatus(printer: ElectronPrinterInfo): PrinterStatus {
-  const options = printer.options as unknown as Record<string, string>;
-  const raw = Number(options["printer-state"] ?? options.status);
-  // CUPS uses 3 for idle, 4 for processing, and 5 for stopped.
-  if (raw === 3 || raw === 4 || raw === 0) return "online";
-  if (raw === 5 || raw === 7) return "offline";
-  if (raw < 0) return "error";
-  return "unknown";
-}
+import { printerStatus } from "./printer-status";
 
 export class ElectronPrintAdapter implements PrintAdapter {
   constructor(private readonly testPagePath: string) {}
@@ -29,7 +20,10 @@ export class ElectronPrintAdapter implements PrintAdapter {
     return (await owner.webContents.getPrintersAsync()).map((printer) => ({
       name: printer.name,
       displayName: printer.displayName,
-      status: printerStatus(printer),
+      status: printerStatus({
+        status: (printer as ElectronPrinterInfo & { status?: number }).status,
+        options: printer.options as unknown as Record<string, unknown>,
+      }),
       isDefault:
         (printer.options as unknown as Record<string, string>).isDefault ===
         "true",

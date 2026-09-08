@@ -228,12 +228,23 @@ async function bootstrap(): Promise<void> {
   });
   ipcMain.handle("updates:check", async () => {
     if (!app.isPackaged)
-      throw new Error("Update checks require a packaged build.");
+      return {
+        status: "unavailable",
+        message: "Update checks are only available in an installed build.",
+      };
     if (!["win32", "darwin"].includes(process.platform))
-      throw new Error("Automatic updates are available on Windows and macOS.");
+      return {
+        status: "unavailable",
+        message: "Automatic updates are available on Windows and macOS.",
+      };
     if (!LOCKBAH_UPDATE_URL)
-      throw new Error("This build has no update feed configured.");
+      return {
+        status: "unavailable",
+        message:
+          "This build cannot check for updates. Install the latest build.",
+      };
     await autoUpdater.checkForUpdates();
+    return { status: "started", message: "Update check started." };
   });
 
   const icon = nativeImage.createFromPath(iconPath("tray.png"));

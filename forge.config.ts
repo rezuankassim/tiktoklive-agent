@@ -8,12 +8,19 @@ import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import path from "node:path";
 
+const packagerIcon =
+  process.platform === "win32"
+    ? "icon.ico"
+    : process.platform === "darwin"
+      ? "icon.icns"
+      : "icon.png";
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: "LockbahPrintAgent",
     extraResource: [path.resolve(__dirname, "assets")],
-    icon: path.resolve(__dirname, "assets", "icon"),
+    icon: path.resolve(__dirname, "assets", packagerIcon),
     win32metadata: {
       CompanyName: "Lockbah",
       FileDescription: "Lockbah Print Agent",

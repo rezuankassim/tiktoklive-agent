@@ -240,6 +240,19 @@ function Dashboard({
     }
   }
 
+  async function checkForUpdates() {
+    setWorking("updates");
+    setNotice(null);
+    try {
+      const result = await window.lockbah.checkForUpdates();
+      setNotice({ message: result.message, error: false });
+    } catch (error) {
+      setNotice({ message: errorMessage(error), error: true });
+    } finally {
+      setWorking(null);
+    }
+  }
+
   const jobValue = status.currentJob
     ? `${status.currentJob.phase} · ${status.currentJob.id}`
     : "Idle";
@@ -404,15 +417,14 @@ function Dashboard({
         <Button
           type="button"
           variant="outline"
-          onClick={() =>
-            void act(
-              "updates",
-              () => window.lockbah.checkForUpdates(),
-              "Update check started.",
-            )
-          }
+          disabled={working === "updates"}
+          onClick={() => void checkForUpdates()}
         >
-          <RefreshCwIcon data-icon="inline-start" />
+          {working === "updates" ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <RefreshCwIcon data-icon="inline-start" />
+          )}
           Check updates
         </Button>
         <Button
@@ -451,7 +463,7 @@ function App() {
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-6 p-6">
       <header className="flex items-center gap-3 px-1 pt-1">
         <img
-          src="/logo.png"
+          src="./logo.png"
           alt=""
           className="size-12 object-contain"
           aria-hidden="true"

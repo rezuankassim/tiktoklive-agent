@@ -4,6 +4,7 @@ import type {
   PairInput,
   RendererApi,
   SettingsPatch,
+  UpdateCheckResult,
 } from "./shared/types";
 
 const api: RendererApi = {
@@ -16,7 +17,8 @@ const api: RendererApi = {
     ipcRenderer.invoke("settings:update", patch),
   printTestPage: () => ipcRenderer.invoke("print:test") as Promise<void>,
   exportLogs: () => ipcRenderer.invoke("logs:export") as Promise<string | null>,
-  checkForUpdates: () => ipcRenderer.invoke("updates:check") as Promise<void>,
+  checkForUpdates: () =>
+    ipcRenderer.invoke("updates:check") as Promise<UpdateCheckResult>,
   onStatus: (callback: (status: AgentStatus) => void) => {
     const listener = (
       _event: Electron.IpcRendererEvent,
