@@ -14,12 +14,16 @@ const packagerIcon =
     : process.platform === "darwin"
       ? "icon.icns"
       : "icon.png";
+const sumatraPdfExecutable = path.resolve(
+  __dirname,
+  "node_modules/pdf-to-printer/dist/SumatraPDF-3.4.6-32.exe",
+);
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: "LockbahPrintAgent",
-    extraResource: [path.resolve(__dirname, "assets")],
+    extraResource: [path.resolve(__dirname, "assets"), sumatraPdfExecutable],
     icon: path.resolve(__dirname, "assets", packagerIcon),
     win32metadata: {
       CompanyName: "Lockbah",

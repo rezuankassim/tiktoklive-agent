@@ -4,10 +4,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   LOCKBAH_API_BASE_URL: https://lockbah.com
+  LOCKBAH_UPDATE_URL: https://update.electronjs.org/${{ github.repository }}
 
 jobs:
   build:
@@ -29,9 +30,28 @@ jobs:
       - name: Build Windows installer
         run: npm run make -- --arch=x64
 
-      - name: Upload installer
+      - name: Read package version
+        id: package-version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: lockbah-print-agent-windows
           path: out/make/**
           if-no-files-found: error
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.package-version.outputs.version }}
+          name: ${{ steps.package-version.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            out/make/**/*.exe
+            out/make/**/RELEASES
+            out/make/**/*.nupkg

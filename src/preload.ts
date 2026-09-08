@@ -19,6 +19,14 @@ const api: RendererApi = {
   exportLogs: () => ipcRenderer.invoke("logs:export") as Promise<string | null>,
   checkForUpdates: () =>
     ipcRenderer.invoke("updates:check") as Promise<UpdateCheckResult>,
+  onUpdateStatus: (callback: (result: UpdateCheckResult) => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      result: UpdateCheckResult,
+    ): void => callback(result);
+    ipcRenderer.on("updates:status", listener);
+    return () => ipcRenderer.removeListener("updates:status", listener);
+  },
   onStatus: (callback: (status: AgentStatus) => void) => {
     const listener = (
       _event: Electron.IpcRendererEvent,

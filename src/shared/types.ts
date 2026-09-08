@@ -51,6 +51,7 @@ export interface PrinterInfo {
 }
 
 export interface AgentStatus {
+  appVersion: string;
   paired: boolean;
   deviceName: string | null;
   connection: "disconnected" | "connecting" | "connected" | "backoff";
@@ -73,7 +74,14 @@ export interface SettingsPatch {
 }
 
 export interface UpdateCheckResult {
-  status: "started" | "unavailable";
+  status:
+    | "started"
+    | "checking"
+    | "available"
+    | "not-available"
+    | "downloaded"
+    | "unavailable"
+    | "error";
   message: string;
 }
 
@@ -86,5 +94,6 @@ export interface RendererApi {
   printTestPage(): Promise<void>;
   exportLogs(): Promise<string | null>;
   checkForUpdates(): Promise<UpdateCheckResult>;
+  onUpdateStatus(callback: (result: UpdateCheckResult) => void): () => void;
   onStatus(callback: (status: AgentStatus) => void): () => void;
 }

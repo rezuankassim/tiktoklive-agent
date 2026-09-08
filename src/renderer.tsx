@@ -52,7 +52,11 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import type { AgentStatus, PrinterInfo } from "@/shared/types";
+import type {
+  AgentStatus,
+  PrinterInfo,
+  UpdateCheckResult,
+} from "@/shared/types";
 import "./index.css";
 
 type Notice = { message: string; error: boolean } | null;
@@ -204,6 +208,17 @@ function Dashboard({
     void loadPrinters();
   }, [loadPrinters]);
 
+  useEffect(
+    () =>
+      window.lockbah.onUpdateStatus((result: UpdateCheckResult) => {
+        setNotice({
+          message: result.message,
+          error: result.status === "error" || result.status === "unavailable",
+        });
+      }),
+    [],
+  );
+
   const printerItems = useMemo(
     () => [
       { label: "Select a printer", value: null as string | null },
@@ -245,7 +260,10 @@ function Dashboard({
     setNotice(null);
     try {
       const result = await window.lockbah.checkForUpdates();
-      setNotice({ message: result.message, error: false });
+      setNotice({
+        message: result.message,
+        error: result.status === "error" || result.status === "unavailable",
+      });
     } catch (error) {
       setNotice({ message: errorMessage(error), error: true });
     } finally {
@@ -468,10 +486,19 @@ function App() {
           className="size-12 object-contain"
           aria-hidden="true"
         />
-        <div className="min-w-0">
-          <h1 className="font-heading text-xl font-semibold tracking-wide uppercase">
-            Lockbah
-          </h1>
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h1 className="font-heading text-xl font-semibold tracking-wide uppercase">
+              Lockbah
+            </h1>
+            {status ? (
+              <Badge variant="secondary">
+                {status.appVersion.startsWith("v")
+                  ? status.appVersion
+                  : `v${status.appVersion}`}
+              </Badge>
+            ) : null}
+          </div>
           <p className="text-sm text-muted-foreground">Print Agent</p>
         </div>
       </header>

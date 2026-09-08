@@ -44,6 +44,7 @@ export class AgentService {
     this.api.setBaseUrl(preferences.apiBaseUrl);
     this.app.setLoginItemSettings({ openAtLogin: preferences.launchAtLogin });
     this.status = {
+      appVersion: this.app.getVersion(),
       paired: Boolean(token && device),
       deviceName: device?.name || null,
       connection: "disconnected",

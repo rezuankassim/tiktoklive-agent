@@ -11,14 +11,21 @@ import {
 } from "electron";
 import path from "node:path";
 import started from "electron-squirrel-startup";
-import type { PairInput, SettingsPatch } from "./shared/types";
+import type {
+  PairInput,
+  SettingsPatch,
+  UpdateCheckResult,
+} from "./shared/types";
 import { AgentService } from "./main/agent-service";
 import { LockbahApiClient } from "./main/api-client";
 import { DeviceStore } from "./main/device-store";
 import { JobProcessor } from "./main/job-processor";
 import { JobStore } from "./main/job-store";
 import { StructuredLogger } from "./main/logger";
-import { ElectronPrintAdapter } from "./main/print-adapter";
+import {
+  ElectronPrintAdapter,
+  resolveNativeHelperPath,
+} from "./main/print-adapter";
 import { SettingsStore } from "./main/settings-store";
 import { TokenVault } from "./main/token-vault";
 
@@ -29,6 +36,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let service: AgentService;
 let isQuitting = false;
+let updatesConfigured = false;
 
 function iconPath(fileName: string): string {
   const baseDirectory = app.isPackaged
@@ -44,8 +52,55 @@ function configureUpdates(): void {
     !["win32", "darwin"].includes(process.platform)
   )
     return;
-  const feedUrl = `${LOCKBAH_UPDATE_URL.replace(/\/$/, "")}/${process.platform}/${process.arch}/${app.getVersion()}`;
+  const platform = `${process.platform}-${process.arch}`;
+  const feedUrl = `${LOCKBAH_UPDATE_URL.replace(/\/$/, "")}/${platform}/${app.getVersion()}`;
   autoUpdater.setFeedURL({ url: feedUrl });
+  if (updatesConfigured) return;
+  updatesConfigured = true;
+
+  const sendStatus = (result: UpdateCheckResult): void => {
+    mainWindow?.webContents.send("updates:status", result);
+  };
+  autoUpdater.on("checking-for-update", () => {
+    sendStatus({ status: "checking", message: "Checking for updates..." });
+  });
+  autoUpdater.on("update-available", () => {
+    sendStatus({
+      status: "available",
+      message: "An update is available and is downloading now.",
+    });
+  });
+  autoUpdater.on("update-not-available", () => {
+    sendStatus({
+      status: "not-available",
+      message: `Version ${app.getVersion()} is up to date.`,
+    });
+  });
+  autoUpdater.on("error", (error) => {
+    sendStatus({ status: "error", message: error.message });
+  });
+  autoUpdater.on("update-downloaded", () => {
+    sendStatus({
+      status: "downloaded",
+      message: "The update is ready. Restart the app to install it.",
+    });
+    void dialog
+      .showMessageBox({
+        type: "info",
+        title: "Update ready",
+        message: "A new version of Lockbah Print Agent is ready to install.",
+        detail: "Restart the app now to finish the update.",
+        buttons: ["Restart and install", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      .then(({ response }) => {
+        if (response === 0) {
+          isQuitting = true;
+          autoUpdater.quitAndInstall();
+        }
+      });
+  });
 }
 
 function loadWindowContent(window: BrowserWindow): void {
@@ -163,13 +218,21 @@ async function bootstrap(): Promise<void> {
   );
   const devices = new DeviceStore(path.join(dataDirectory, "device.json"));
   mainWindow = createWindow(false);
+  configureUpdates();
   const testPagePath = app.isPackaged
     ? path.join(
         __dirname,
         `../renderer/${MAIN_WINDOW_VITE_NAME}/test-page.html`,
       )
     : path.join(app.getAppPath(), "public", "test-page.html");
-  const printer = new ElectronPrintAdapter(testPagePath);
+  const printer = new ElectronPrintAdapter(testPagePath, {
+    platform: process.platform,
+    helperPath: resolveNativeHelperPath({
+      isPackaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      appPath: app.getAppPath(),
+    }),
+  });
   const initialSettings = await settings.get();
   const api = new LockbahApiClient(
     initialSettings.apiBaseUrl,
@@ -268,7 +331,6 @@ async function bootstrap(): Promise<void> {
   loadWindowContent(mainWindow);
   const openedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin;
   if (!openedAtLogin || !service.getStatus().paired) showWindow();
-  configureUpdates();
   if (app.isPackaged && LOCKBAH_UPDATE_URL) void autoUpdater.checkForUpdates();
 }
 
