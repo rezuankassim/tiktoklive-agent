@@ -13,13 +13,24 @@ Run this checklist on the signed release candidate. Record the Windows version, 
 
 ## Pilot thermal printer
 
-- Record the pilot model and driver version here: ________________________________.
-- Configure a 62 × 100 mm stock size in the vendor driver.
-- Print the test page and a server PDF whose media box is 62 × 100 mm.
-- Measure the printed content box and confirm the 5 mm margins within the printer's physical tolerance.
-- Repeat portrait and landscape jobs, one and two copies, and every DPI used by the pilot.
-- Confirm Chromium honors the PDF media box and custom page size without scaling or clipping.
-- If it does not, stop release approval. Replace `ElectronPrintAdapter` with the planned signed native helper or PDFium adapter. Do not change the API client or job processor.
+1. Record the Windows version: ________________________________.
+2. Record the printer manufacturer and exact model: ________________________________.
+3. In **Settings > Bluetooth & devices > Printers & scanners > [target printer] > Printer properties**, record the driver name and version: ________________________________.
+4. Record the connection type, such as USB, Ethernet, or Wi-Fi: ________________________________.
+5. In the vendor driver, create or select exactly 62 × 100 mm stock. Disable driver scaling options such as **Fit to page**.
+6. Print the Windows test page and confirm the target printer is online.
+7. Start the signed agent, select the target printer by its exact system name, save the setting, and click **Print test page**. Confirm no print dialog opens and one page prints with black text on white paper.
+8. Measure the test page content. Confirm it has 5 mm margins, within the printer's stated physical tolerance, and is not clipped or rotated.
+9. Submit a server PDF with a 62 × 100 mm media box and 5 mm margins in its layout. Confirm no print dialog opens, the background remains white, and the printed content matches the Laravel preview without a second 5 mm margin.
+10. Submit portrait and landscape server PDFs. Confirm each uses 62 × 100 mm paper, has the requested orientation, and is not scaled, clipped, or rotated unexpectedly.
+11. Submit jobs for one copy and two copies. Confirm the printer produces exactly the requested count.
+12. Submit one job for each DPI value used by the deployment. Record the DPI and result: ________________________________.
+13. Change the saved printer name to a name that is not installed, then submit a job. Confirm the agent reports `printer_not_found`, sends nothing to the default printer or any other queue, and opens no dialog. Restore the target printer afterward.
+14. Pause the target printer queue, submit a job, and confirm the agent reports retryable `printer_offline`. Confirm no other printer receives the job. Resume and clear the queue afterward.
+15. Submit one job, then close the agent after Windows accepts it into the spooler but before the server records the submitted response. Restart the agent. Confirm it acknowledges the stored job and the physical copy count does not increase.
+16. Record a pass or fail for paper size, orientation, copy count, placement, white background, scaling, clipping, rotation, printer selection, silent printing, and duplicate prevention.
+
+If the PDF still prints black or the driver scales or clips it, stop release approval. Record the printer model, driver, job settings, and a sample PDF. The next adapter must use a signed Windows-native or PDFium-backed print path behind `PrintAdapter`; do not change the API client or server job contract.
 
 ## Update and installation
 
