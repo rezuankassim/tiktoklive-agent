@@ -75,11 +75,11 @@ export interface SettingsPatch {
 
 export interface UpdateCheckResult {
   status:
-    | "started"
     | "checking"
     | "available"
     | "not-available"
     | "downloaded"
+    | "installing"
     | "unavailable"
     | "error";
   message: string;
@@ -94,6 +94,8 @@ export interface RendererApi {
   printTestPage(): Promise<void>;
   exportLogs(): Promise<string | null>;
   checkForUpdates(): Promise<UpdateCheckResult>;
+  getUpdateStatus(): Promise<UpdateCheckResult | null>;
+  installUpdate(): Promise<void>;
   onUpdateStatus(callback: (result: UpdateCheckResult) => void): () => void;
   onStatus(callback: (status: AgentStatus) => void): () => void;
 }

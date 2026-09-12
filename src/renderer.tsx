@@ -61,6 +61,29 @@ import "./index.css";
 
 type Notice = { message: string; error: boolean } | null;
 
+function updateIsRunning(result: UpdateCheckResult | null): boolean {
+  return result?.status === "checking" || result?.status === "available";
+}
+
+function updateTitle(result: UpdateCheckResult): string {
+  switch (result.status) {
+    case "checking":
+      return "Checking for updates";
+    case "available":
+      return "Downloading update";
+    case "downloaded":
+      return "Update ready";
+    case "installing":
+      return "Installing update";
+    case "not-available":
+      return "App is up to date";
+    case "unavailable":
+      return "Updates unavailable";
+    case "error":
+      return "Update failed";
+  }
+}
+
 function errorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : "The action failed.";
   return message.replace(/^Error invoking remote method '[^']+': Error: /, "");
@@ -191,6 +214,9 @@ function Dashboard({
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [notice, setNotice] = useState<Notice>(null);
   const [working, setWorking] = useState<string | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<UpdateCheckResult | null>(
+    null,
+  );
 
   const loadPrinters = useCallback(async () => {
     setWorking("refresh");
@@ -208,16 +234,13 @@ function Dashboard({
     void loadPrinters();
   }, [loadPrinters]);
 
-  useEffect(
-    () =>
-      window.lockbah.onUpdateStatus((result: UpdateCheckResult) => {
-        setNotice({
-          message: result.message,
-          error: result.status === "error" || result.status === "unavailable",
-        });
-      }),
-    [],
-  );
+  useEffect(() => {
+    const unsubscribe = window.lockbah.onUpdateStatus(setUpdateStatus);
+    void window.lockbah
+      .getUpdateStatus()
+      .then((result) => setUpdateStatus((current) => current ?? result));
+    return unsubscribe;
+  }, []);
 
   const printerItems = useMemo(
     () => [
@@ -256,18 +279,19 @@ function Dashboard({
   }
 
   async function checkForUpdates() {
-    setWorking("updates");
-    setNotice(null);
     try {
       const result = await window.lockbah.checkForUpdates();
-      setNotice({
-        message: result.message,
-        error: result.status === "error" || result.status === "unavailable",
-      });
+      setUpdateStatus(result);
     } catch (error) {
-      setNotice({ message: errorMessage(error), error: true });
-    } finally {
-      setWorking(null);
+      setUpdateStatus({ status: "error", message: errorMessage(error) });
+    }
+  }
+
+  async function installUpdate() {
+    try {
+      await window.lockbah.installUpdate();
+    } catch (error) {
+      setUpdateStatus({ status: "error", message: errorMessage(error) });
     }
   }
 
@@ -398,6 +422,32 @@ function Dashboard({
             <AlertDescription>{notice.message}</AlertDescription>
           </Alert>
         ) : null}
+
+        {updateStatus ? (
+          <Alert
+            variant={
+              updateStatus.status === "error" ||
+              updateStatus.status === "unavailable"
+                ? "destructive"
+                : "default"
+            }
+            aria-live="polite"
+          >
+            {updateIsRunning(updateStatus) ||
+            updateStatus.status === "installing" ? (
+              <Spinner />
+            ) : updateStatus.status === "error" ||
+              updateStatus.status === "unavailable" ? (
+              <AlertCircleIcon />
+            ) : updateStatus.status === "downloaded" ? (
+              <DownloadIcon />
+            ) : (
+              <CheckCircle2Icon />
+            )}
+            <AlertTitle>{updateTitle(updateStatus)}</AlertTitle>
+            <AlertDescription>{updateStatus.message}</AlertDescription>
+          </Alert>
+        ) : null}
       </CardContent>
       <CardFooter className="grid grid-cols-2 gap-2 pt-2">
         <Button
@@ -435,15 +485,33 @@ function Dashboard({
         <Button
           type="button"
           variant="outline"
-          disabled={working === "updates"}
-          onClick={() => void checkForUpdates()}
+          disabled={
+            updateIsRunning(updateStatus) ||
+            updateStatus?.status === "installing"
+          }
+          onClick={() =>
+            void (updateStatus?.status === "downloaded"
+              ? installUpdate()
+              : checkForUpdates())
+          }
         >
-          {working === "updates" ? (
+          {updateIsRunning(updateStatus) ||
+          updateStatus?.status === "installing" ? (
             <Spinner data-icon="inline-start" />
+          ) : updateStatus?.status === "downloaded" ? (
+            <DownloadIcon data-icon="inline-start" />
           ) : (
             <RefreshCwIcon data-icon="inline-start" />
           )}
-          Check updates
+          {updateStatus?.status === "downloaded"
+            ? "Restart and install"
+            : updateStatus?.status === "available"
+              ? "Downloading update"
+              : updateStatus?.status === "checking"
+                ? "Checking updates"
+                : updateStatus?.status === "installing"
+                  ? "Installing update"
+                  : "Check updates"}
         </Button>
         <Button
           type="button"

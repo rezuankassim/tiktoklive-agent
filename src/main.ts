@@ -37,6 +37,25 @@ let tray: Tray | null = null;
 let service: AgentService;
 let isQuitting = false;
 let updatesConfigured = false;
+let updateStatus: UpdateCheckResult | null = null;
+
+function setUpdateStatus(result: UpdateCheckResult): UpdateCheckResult {
+  updateStatus = result;
+  mainWindow?.webContents.send("updates:status", result);
+  return result;
+}
+
+function installDownloadedUpdate(): void {
+  if (updateStatus?.status !== "downloaded") {
+    throw new Error("No downloaded update is ready to install.");
+  }
+  setUpdateStatus({
+    status: "installing",
+    message: "Restarting to install the update...",
+  });
+  isQuitting = true;
+  autoUpdater.quitAndInstall();
+}
 
 function iconPath(fileName: string): string {
   const baseDirectory = app.isPackaged
@@ -58,31 +77,28 @@ function configureUpdates(): void {
   if (updatesConfigured) return;
   updatesConfigured = true;
 
-  const sendStatus = (result: UpdateCheckResult): void => {
-    mainWindow?.webContents.send("updates:status", result);
-  };
   autoUpdater.on("checking-for-update", () => {
-    sendStatus({ status: "checking", message: "Checking for updates..." });
+    setUpdateStatus({ status: "checking", message: "Checking for updates..." });
   });
   autoUpdater.on("update-available", () => {
-    sendStatus({
+    setUpdateStatus({
       status: "available",
       message: "An update is available and is downloading now.",
     });
   });
   autoUpdater.on("update-not-available", () => {
-    sendStatus({
+    setUpdateStatus({
       status: "not-available",
       message: `Version ${app.getVersion()} is up to date.`,
     });
   });
   autoUpdater.on("error", (error) => {
-    sendStatus({ status: "error", message: error.message });
+    setUpdateStatus({ status: "error", message: error.message });
   });
   autoUpdater.on("update-downloaded", () => {
-    sendStatus({
+    setUpdateStatus({
       status: "downloaded",
-      message: "The update is ready. Restart the app to install it.",
+      message: "The update is downloaded and ready to install.",
     });
     void dialog
       .showMessageBox({
@@ -96,8 +112,7 @@ function configureUpdates(): void {
       })
       .then(({ response }) => {
         if (response === 0) {
-          isQuitting = true;
-          autoUpdater.quitAndInstall();
+          installDownloadedUpdate();
         }
       });
   });
@@ -291,24 +306,38 @@ async function bootstrap(): Promise<void> {
   });
   ipcMain.handle("updates:check", async () => {
     if (!app.isPackaged)
-      return {
+      return setUpdateStatus({
         status: "unavailable",
         message: "Update checks are only available in an installed build.",
-      };
+      });
     if (!["win32", "darwin"].includes(process.platform))
-      return {
+      return setUpdateStatus({
         status: "unavailable",
         message: "Automatic updates are available on Windows and macOS.",
-      };
+      });
     if (!LOCKBAH_UPDATE_URL)
-      return {
+      return setUpdateStatus({
         status: "unavailable",
         message:
           "This build cannot check for updates. Install the latest build.",
-      };
-    await autoUpdater.checkForUpdates();
-    return { status: "started", message: "Update check started." };
+      });
+    if (
+      updateStatus?.status === "checking" ||
+      updateStatus?.status === "available" ||
+      updateStatus?.status === "downloaded" ||
+      updateStatus?.status === "installing"
+    ) {
+      return updateStatus;
+    }
+    const checking = setUpdateStatus({
+      status: "checking",
+      message: "Checking for updates...",
+    });
+    autoUpdater.checkForUpdates();
+    return checking;
   });
+  ipcMain.handle("updates:status:get", () => updateStatus);
+  ipcMain.handle("updates:install", () => installDownloadedUpdate());
 
   const icon = nativeImage.createFromPath(iconPath("tray.png"));
   if (icon.isEmpty()) throw new Error("The tray icon could not be loaded.");
