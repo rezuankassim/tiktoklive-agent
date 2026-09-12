@@ -31,6 +31,9 @@ import { TokenVault } from "./main/token-vault";
 
 if (started) app.quit();
 if (!app.requestSingleInstanceLock()) app.quit();
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.squirrel.LockbahPrintAgent.LockbahPrintAgent");
+}
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -62,6 +65,14 @@ function iconPath(fileName: string): string {
     ? process.resourcesPath
     : app.getAppPath();
   return path.join(baseDirectory, "assets", fileName);
+}
+
+function windowIconPath(): string {
+  return iconPath(process.platform === "win32" ? "icon.ico" : "icon.png");
+}
+
+function trayIconPath(): string {
+  return iconPath(process.platform === "win32" ? "icon.ico" : "tray.png");
 }
 
 function configureUpdates(): void {
@@ -130,11 +141,14 @@ function loadWindowContent(window: BrowserWindow): void {
 
 function createWindow(loadContent = true): BrowserWindow {
   const window = new BrowserWindow({
-    icon: iconPath("icon.png"),
+    icon: windowIconPath(),
     width: 480,
     height: 760,
     minWidth: 400,
     minHeight: 580,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
     show: false,
     title: "Lockbah Print Agent",
     webPreferences: {
@@ -339,7 +353,7 @@ async function bootstrap(): Promise<void> {
   ipcMain.handle("updates:status:get", () => updateStatus);
   ipcMain.handle("updates:install", () => installDownloadedUpdate());
 
-  const icon = nativeImage.createFromPath(iconPath("tray.png"));
+  const icon = nativeImage.createFromPath(trayIconPath());
   if (icon.isEmpty()) throw new Error("The tray icon could not be loaded.");
   tray = new Tray(icon);
   tray.setContextMenu(
