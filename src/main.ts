@@ -29,9 +29,10 @@ import {
 import { SettingsStore } from "./main/settings-store";
 import { TokenVault } from "./main/token-vault";
 
-if (started) app.quit();
-if (!app.requestSingleInstanceLock()) app.quit();
-if (process.platform === "win32") {
+const shouldStartApplication = !started && app.requestSingleInstanceLock();
+
+if (!shouldStartApplication) app.quit();
+if (shouldStartApplication && process.platform === "win32") {
   app.setAppUserModelId("com.squirrel.LockbahPrintAgent.LockbahPrintAgent");
 }
 
@@ -377,24 +378,26 @@ async function bootstrap(): Promise<void> {
   if (app.isPackaged && LOCKBAH_UPDATE_URL) void autoUpdater.checkForUpdates();
 }
 
-app
-  .whenReady()
-  .then(bootstrap)
-  .catch(async (error: unknown) => {
-    await dialog.showMessageBox({
-      type: "error",
-      title: "Lockbah Print Agent",
-      message:
-        error instanceof Error ? error.message : "The app could not start.",
+if (shouldStartApplication) {
+  app
+    .whenReady()
+    .then(bootstrap)
+    .catch(async (error: unknown) => {
+      await dialog.showMessageBox({
+        type: "error",
+        title: "Lockbah Print Agent",
+        message:
+          error instanceof Error ? error.message : "The app could not start.",
+      });
+      app.quit();
     });
-    app.quit();
+  app.on("window-all-closed", () => undefined);
+  app.on("activate", showWindow);
+  app.on("second-instance", showWindow);
+  app.on("before-quit", () => {
+    isQuitting = true;
   });
-app.on("window-all-closed", () => undefined);
-app.on("activate", showWindow);
-app.on("second-instance", showWindow);
-app.on("before-quit", () => {
-  isQuitting = true;
-});
-app.on("web-contents-created", (_event, contents) => {
-  contents.on("will-attach-webview", (event) => event.preventDefault());
-});
+  app.on("web-contents-created", (_event, contents) => {
+    contents.on("will-attach-webview", (event) => event.preventDefault());
+  });
+}

@@ -1,7 +1,7 @@
 {
   "name": "lockbah-print-agent",
   "productName": "Lockbah Print Agent",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Desktop print agent for Lockbah",
   "main": ".vite/build/main.js",
   "private": true,
