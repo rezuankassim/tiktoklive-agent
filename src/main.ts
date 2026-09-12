@@ -30,6 +30,7 @@ import { SettingsStore } from "./main/settings-store";
 import { TokenVault } from "./main/token-vault";
 
 const shouldStartApplication = !started && app.requestSingleInstanceLock();
+const isSquirrelFirstRun = process.argv.includes("--squirrel-firstrun");
 
 if (!shouldStartApplication) app.quit();
 if (shouldStartApplication && process.platform === "win32") {
@@ -375,7 +376,13 @@ async function bootstrap(): Promise<void> {
   loadWindowContent(mainWindow);
   const openedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin;
   if (!openedAtLogin || !service.getStatus().paired) showWindow();
-  if (app.isPackaged && LOCKBAH_UPDATE_URL) void autoUpdater.checkForUpdates();
+  if (app.isPackaged && LOCKBAH_UPDATE_URL) {
+    if (isSquirrelFirstRun) {
+      setTimeout(() => autoUpdater.checkForUpdates(), 10_000);
+    } else {
+      void autoUpdater.checkForUpdates();
+    }
+  }
 }
 
 if (shouldStartApplication) {
