@@ -54,6 +54,47 @@ jobs:
             throw "The updater manifest does not contain $expectedPackage"
           }
 
+      - name: Test Windows installer
+        shell: pwsh
+        run: |
+          $version = "${{ steps.package-version.outputs.version }}"
+          $setup = Get-ChildItem out/make -Filter LockbahPrintAgentSetup.exe -Recurse | Select-Object -First 1
+          if (-not $setup) {
+            throw "The Windows setup executable was not generated"
+          }
+
+          $startedAt = Get-Date
+          $installer = Start-Process -FilePath $setup.FullName -PassThru
+          if (-not $installer.WaitForExit(120000)) {
+            $installer.Kill()
+            throw "The Windows installer did not exit within two minutes"
+          }
+          if ($installer.ExitCode -ne 0) {
+            throw "The Windows installer exited with code $($installer.ExitCode)"
+          }
+
+          $installedVersion = Join-Path $env:LOCALAPPDATA "LockbahPrintAgent/app-$version"
+          $deadline = (Get-Date).AddSeconds(30)
+          while (-not (Test-Path $installedVersion) -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 500
+          }
+          if (-not (Test-Path $installedVersion)) {
+            throw "The installer did not create $installedVersion"
+          }
+
+          Start-Sleep -Seconds 15
+          Get-Process LockbahPrintAgent -ErrorAction SilentlyContinue | Stop-Process -Force
+          $squirrelCrashes = Get-WinEvent -FilterHashtable @{
+            LogName = "Application"
+            StartTime = $startedAt
+          } -ErrorAction SilentlyContinue | Where-Object {
+            $_.Id -in 1000, 1026 -and $_.Message -match "Update\.exe|Squirrel\.Update"
+          }
+          if ($squirrelCrashes) {
+            $squirrelCrashes | Format-List TimeCreated, Id, ProviderName, Message
+            throw "Squirrel crashed while installing the generated setup"
+          }
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:

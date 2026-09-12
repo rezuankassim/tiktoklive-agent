@@ -39,6 +39,7 @@ const config: ForgeConfig = {
       name: "LockbahPrintAgent",
       setupExe: "LockbahPrintAgentSetup.exe",
       setupIcon: path.resolve(__dirname, "assets", "icon.ico"),
+      loadingGif: path.resolve(__dirname, "assets", "install-spinner.gif"),
       ...(process.env.WINDOWS_CERTIFICATE_FILE &&
       process.env.WINDOWS_CERTIFICATE_PASSWORD
         ? {
