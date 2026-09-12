@@ -133,10 +133,13 @@ function configureUpdates(): void {
 
 function loadWindowContent(window: BrowserWindow): void {
   if (!app.isPackaged && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    void window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    const developmentUrl = new URL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    if (isSquirrelFirstRun) developmentUrl.searchParams.set("firstRun", "1");
+    void window.loadURL(developmentUrl.toString());
   } else {
     void window.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+      { query: isSquirrelFirstRun ? { firstRun: "1" } : {} },
     );
   }
 }

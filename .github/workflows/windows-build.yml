@@ -63,11 +63,13 @@ jobs:
             throw "The Windows setup executable was not generated"
           }
 
-          Add-Type -AssemblyName PresentationCore
-          $gifPath = (Resolve-Path "assets/install-spinner.gif").Path
-          $gifFrame = [System.Windows.Media.Imaging.BitmapFrame]::Create([Uri]$gifPath)
-          if ($gifFrame.PixelWidth -ne 140 -or $gifFrame.PixelHeight -ne 140) {
-            throw "The installer GIF must be 140 by 140 pixels"
+          $sevenZip = Resolve-Path "node_modules/electron-winstaller/vendor/7z.exe"
+          $archiveListing = & $sevenZip l $setup.FullName
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not inspect the generated Windows setup"
+          }
+          if ($archiveListing -match "background\.gif") {
+            throw "The Windows setup still contains a Squirrel loading GIF"
           }
 
           $startedAt = Get-Date

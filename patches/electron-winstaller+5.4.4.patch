@@ -1,0 +1,40 @@
+diff --git a/node_modules/electron-winstaller/lib/index.js b/node_modules/electron-winstaller/lib/index.js
+index b0a5077..03a69c9 100644
+--- a/node_modules/electron-winstaller/lib/index.js
++++ b/node_modules/electron-winstaller/lib/index.js
+@@ -175,7 +175,7 @@ function createWindowsInstaller(options) {
+                     _e.label = 8;
+                 case 8:
+                     defaultLoadingGif = path.join(__dirname, '..', 'resources', 'install-spinner.gif');
+-                    loadingGif = loadingGif ? path.resolve(loadingGif) : defaultLoadingGif;
++                    loadingGif = loadingGif === false ? false : loadingGif ? path.resolve(loadingGif) : defaultLoadingGif;
+                     certificateFile = options.certificateFile, certificatePassword = options.certificatePassword, remoteReleases = options.remoteReleases, signWithParams = options.signWithParams, remoteToken = options.remoteToken, windowsSign = options.windowsSign;
+                     metadata = {
+                         description: '',
+@@ -288,9 +288,11 @@ function createWindowsInstaller(options) {
+                     cmd = path.join(vendorPath, 'Squirrel.exe');
+                     args = [
+                         '--releasify', nupkgPath,
+-                        '--releaseDir', outputDirectory,
+-                        '--loadingGif', loadingGif
++                        '--releaseDir', outputDirectory
+                     ];
++                    if (loadingGif !== false) {
++                        args.push('--loadingGif', loadingGif);
++                    }
+                     if (useMono) {
+                         args.unshift(path.join(vendorPath, 'Squirrel-Mono.exe'));
+                         cmd = monoExe;
+diff --git a/node_modules/electron-winstaller/lib/options.d.ts b/node_modules/electron-winstaller/lib/options.d.ts
+index b95e1cb..90bd4ba 100644
+--- a/node_modules/electron-winstaller/lib/options.d.ts
++++ b/node_modules/electron-winstaller/lib/options.d.ts
+@@ -25,7 +25,7 @@ export interface SquirrelWindowsOptions {
+      *
+      * @defaultValue the bundled {@link https://github.com/electron/windows-installer/blob/main/resources/install-spinner.gif | install-spinner.gif}
+      */
+-    loadingGif?: string;
++    loadingGif?: string | false;
+     /**
+      * The `authors` value for the NuGet package metadata.
+      *
