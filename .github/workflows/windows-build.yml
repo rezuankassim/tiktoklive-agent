@@ -26,9 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install WiX Toolset
+      - name: Ensure WiX Toolset is available
         shell: pwsh
-        run: choco install wixtoolset --version=3.14.0 --yes --no-progress
+        run: ./.github/scripts/ensure-wix.ps1
 
       - name: Read and verify package version
         id: package-version

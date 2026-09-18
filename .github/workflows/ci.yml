@@ -29,5 +29,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: choco install wixtoolset --version=3.14.0 --yes --no-progress
+      - name: Ensure WiX Toolset is available
+        shell: pwsh
+        run: ./.github/scripts/ensure-wix.ps1
       - run: npm run make -- --arch=x64
