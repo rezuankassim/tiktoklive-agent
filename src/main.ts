@@ -38,6 +38,7 @@ if (shouldStartApplication && process.platform === "win32") {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let splashWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let service: AgentService;
 let isQuitting = false;
@@ -127,14 +128,39 @@ function configureUpdates(): void {
   });
 }
 
-function loadWindowContent(window: BrowserWindow): void {
+function loadWindowContent(window: BrowserWindow): Promise<void> {
   if (!app.isPackaged && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    void window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    return window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
-    void window.loadFile(
+    return window.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
     );
   }
+}
+
+async function showSplashWindow(): Promise<number> {
+  const window = new BrowserWindow({
+    icon: windowIconPath(),
+    width: 360,
+    height: 300,
+    resizable: false,
+    frame: false,
+    show: false,
+    alwaysOnTop: true,
+    backgroundColor: "#ffffff",
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+    },
+  });
+  splashWindow = window;
+  const splashPath = app.isPackaged
+    ? path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/splash.html`)
+    : path.join(app.getAppPath(), "public", "splash.html");
+  await window.loadFile(splashPath);
+  window.show();
+  return Date.now();
 }
 
 function createWindow(loadContent = true): BrowserWindow {
@@ -166,7 +192,7 @@ function createWindow(loadContent = true): BrowserWindow {
     if (!url.startsWith("file:") && !localDevelopmentPage)
       event.preventDefault();
   });
-  if (loadContent) loadWindowContent(window);
+  if (loadContent) void loadWindowContent(window);
   window.on("close", (event) => {
     if (!isQuitting) {
       event.preventDefault();
@@ -227,6 +253,7 @@ async function bootstrap(): Promise<void> {
   if (process.platform === "darwin") {
     app.dock?.setIcon(iconPath("icon.png"));
   }
+  const splashShownAt = await showSplashWindow();
   const dataDirectory = app.getPath("userData");
   const privateTemporaryDirectory = path.join(
     app.getPath("temp"),
@@ -434,7 +461,12 @@ async function bootstrap(): Promise<void> {
   );
   tray.on("click", showWindow);
   await service.start();
-  loadWindowContent(mainWindow);
+  await loadWindowContent(mainWindow);
+  await new Promise((resolve) =>
+    setTimeout(resolve, Math.max(0, 1200 - (Date.now() - splashShownAt))),
+  );
+  splashWindow?.destroy();
+  splashWindow = null;
   const openedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin;
   if (!openedAtLogin || !service.getStatus().paired) showWindow();
   if (app.isPackaged && LOCKBAH_UPDATE_URL && process.platform === "darwin") {
@@ -447,6 +479,8 @@ if (shouldStartApplication) {
     .whenReady()
     .then(bootstrap)
     .catch(async (error: unknown) => {
+      splashWindow?.destroy();
+      splashWindow = null;
       await dialog.showMessageBox({
         type: "error",
         title: "Lockbah Print Agent",
