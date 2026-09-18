@@ -422,7 +422,7 @@ function Dashboard({
           </Alert>
         ) : null}
 
-        {window.lockbah.platform !== "win32" && updateStatus ? (
+        {updateStatus ? (
           <Alert
             variant={
               updateStatus.status === "error" ||
@@ -485,22 +485,17 @@ function Dashboard({
           type="button"
           variant="outline"
           disabled={
-            window.lockbah.platform !== "win32" &&
-            (updateIsRunning(updateStatus) ||
-              updateStatus?.status === "installing")
+            updateIsRunning(updateStatus) ||
+            updateStatus?.status === "installing"
           }
           onClick={() =>
-            void (window.lockbah.platform === "win32"
-              ? window.lockbah.openWindowsRelease()
-              : updateStatus?.status === "downloaded"
-                ? installUpdate()
-                : checkForUpdates())
+            void (updateStatus?.status === "downloaded"
+              ? installUpdate()
+              : checkForUpdates())
           }
         >
-          {window.lockbah.platform === "win32" ? (
-            <DownloadIcon data-icon="inline-start" />
-          ) : updateIsRunning(updateStatus) ||
-            updateStatus?.status === "installing" ? (
+          {updateIsRunning(updateStatus) ||
+          updateStatus?.status === "installing" ? (
             <Spinner data-icon="inline-start" />
           ) : updateStatus?.status === "downloaded" ? (
             <DownloadIcon data-icon="inline-start" />
@@ -508,7 +503,7 @@ function Dashboard({
             <RefreshCwIcon data-icon="inline-start" />
           )}
           {window.lockbah.platform === "win32"
-            ? "Get latest MSI"
+            ? "Update"
             : updateStatus?.status === "downloaded"
               ? "Restart and install"
               : updateStatus?.status === "available"

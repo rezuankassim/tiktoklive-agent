@@ -34,7 +34,7 @@ Logs use JSON Lines and redact authorization values, device and lease tokens, pa
 
 ## Signing and releases
 
-The Windows installer is an MSI built with WiX Toolset v3. Build it on Windows with WiX installed. CI publishes the MSI to GitHub Releases. The Windows app's **Get latest MSI** button opens the latest release page; users install new MSI versions manually. Keep the WiX `upgradeCode` in `forge.config.ts` unchanged so later MSI releases replace earlier MSI releases. The installer can be signed by setting `WINDOWS_CERTIFICATE_FILE` and `WINDOWS_CERTIFICATE_PASSWORD` in CI. Do not commit either value.
+The Windows installer is an MSI built with WiX Toolset v3. Build it on Windows with WiX installed. CI publishes `LockbahPrintAgent.msi` to GitHub Releases. The Windows app's **Update** button checks the latest release, downloads and verifies a newer MSI, then opens Windows Installer and closes the agent. Keep the WiX `upgradeCode` in `forge.config.ts` unchanged so later MSI releases replace earlier MSI releases. The installer can be signed by setting `WINDOWS_CERTIFICATE_FILE` and `WINDOWS_CERTIFICATE_PASSWORD` in CI. Do not commit either value.
 
 Release commands are:
 

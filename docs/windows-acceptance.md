@@ -39,6 +39,6 @@ If the PDF prints black or blank, or the driver scales or clips it, stop release
 - Install the signed MSI on a clean Windows user account. Confirm Windows Installed apps lists one Lockbah Print Agent entry.
 - Confirm the publisher name and signature in the file properties and the Windows prompt.
 - Enable start after sign-in, sign out, and confirm the tray agent starts once.
-- Publish a higher version MSI. Use **Get latest MSI** in the app, install the new version, and confirm Windows Installed apps and the agent show the new version.
+- Publish a higher version MSI as `LockbahPrintAgent.msi`. Use **Update** in the app, confirm it downloads and opens Windows Installer, complete the installation, and confirm Windows Installed apps and the agent show the new version.
 - On a machine with the old Squirrel edition, quit and uninstall it, then install the MSI. Confirm pairing, printer selection, startup setting, and one test print without a second running agent.
 - Revoke the device in Lockbah. Confirm the next authenticated request stops polling and shows the pairing screen.

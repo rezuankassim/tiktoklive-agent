@@ -28,10 +28,9 @@ import {
 } from "./main/print-adapter";
 import { SettingsStore } from "./main/settings-store";
 import { TokenVault } from "./main/token-vault";
+import { downloadWindowsUpdate } from "./main/windows-updater";
 
 const shouldStartApplication = app.requestSingleInstanceLock();
-const windowsReleaseUrl =
-  "https://github.com/rezuankassim/tiktoklive-agent/releases/latest";
 
 if (!shouldStartApplication) app.quit();
 if (shouldStartApplication && process.platform === "win32") {
@@ -323,10 +322,75 @@ async function bootstrap(): Promise<void> {
         status: "unavailable",
         message: "Update checks are only available in an installed build.",
       });
+    if (process.platform === "win32") {
+      if (
+        updateStatus?.status === "checking" ||
+        updateStatus?.status === "available" ||
+        updateStatus?.status === "installing"
+      ) {
+        return updateStatus;
+      }
+      if (service.getStatus().currentJob) {
+        return setUpdateStatus({
+          status: "error",
+          message: "Wait for the current print job to finish before updating.",
+        });
+      }
+      setUpdateStatus({
+        status: "checking",
+        message: "Checking for updates...",
+      });
+      try {
+        const update = await downloadWindowsUpdate(
+          app.getVersion(),
+          app.getPath("temp"),
+          (version) =>
+            setUpdateStatus({
+              status: "available",
+              message: `Downloading version ${version}...`,
+            }),
+        );
+        if (!update) {
+          return setUpdateStatus({
+            status: "not-available",
+            message: `Version ${app.getVersion()} is up to date.`,
+          });
+        }
+        if (!service.pauseForUpdate()) {
+          throw new Error(
+            "Wait for the agent to finish its current activity before updating.",
+          );
+        }
+        let openError: string;
+        try {
+          openError = await shell.openPath(update.filePath);
+        } catch (error) {
+          service.resumeAfterFailedUpdate();
+          throw error;
+        }
+        if (openError) {
+          service.resumeAfterFailedUpdate();
+          throw new Error(`Could not start Windows Installer: ${openError}`);
+        }
+        const result = setUpdateStatus({
+          status: "installing",
+          message: "Windows Installer is starting. The agent will close now.",
+        });
+        isQuitting = true;
+        setTimeout(() => app.quit(), 1000);
+        return result;
+      } catch (error) {
+        return setUpdateStatus({
+          status: "error",
+          message:
+            error instanceof Error ? error.message : "The update failed.",
+        });
+      }
+    }
     if (process.platform !== "darwin")
       return setUpdateStatus({
         status: "unavailable",
-        message: "Install the latest Windows MSI from the release page.",
+        message: "Updates are unavailable on this platform.",
       });
     if (!LOCKBAH_UPDATE_URL)
       return setUpdateStatus({
@@ -351,9 +415,6 @@ async function bootstrap(): Promise<void> {
   });
   ipcMain.handle("updates:status:get", () => updateStatus);
   ipcMain.handle("updates:install", () => installDownloadedUpdate());
-  ipcMain.handle("updates:open-windows-release", () =>
-    shell.openExternal(windowsReleaseUrl),
-  );
 
   const icon = nativeImage.createFromPath(trayIconPath());
   if (icon.isEmpty()) throw new Error("The tray icon could not be loaded.");

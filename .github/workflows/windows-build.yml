@@ -47,7 +47,7 @@ jobs:
       - name: Test Windows installer
         shell: pwsh
         run: |
-          $msi = Get-ChildItem out/make -Filter *.msi -Recurse | Select-Object -First 1
+          $msi = Get-ChildItem out/make -Filter LockbahPrintAgent.msi -Recurse | Select-Object -First 1
           if (-not $msi) {
             throw "The Windows MSI was not generated"
           }

@@ -20,6 +20,7 @@ export class AgentService {
   private status!: AgentStatus;
   private pollTimer?: NodeJS.Timeout;
   private heartbeatTimer?: NodeJS.Timeout;
+  private pollInProgress = false;
   private stopped = true;
   private readonly backoff = new ExponentialBackoff();
 
@@ -65,6 +66,19 @@ export class AgentService {
 
   getStatus(): AgentStatus {
     return structuredClone(this.status);
+  }
+
+  pauseForUpdate(): boolean {
+    if (this.status.currentJob || this.pollInProgress) return false;
+    this.stopTimers();
+    return true;
+  }
+
+  resumeAfterFailedUpdate(): void {
+    if (!this.status.paired) return;
+    this.stopped = false;
+    this.scheduleHeartbeat();
+    this.schedulePoll(0);
   }
 
   async pair(input: PairInput): Promise<void> {
@@ -167,8 +181,10 @@ export class AgentService {
 
   private async poll(): Promise<void> {
     if (this.stopped || !this.status.paired) return;
+    this.pollInProgress = true;
     try {
       const job = await this.api.claim();
+      if (this.stopped) return;
       this.backoff.reset();
       this.status.connection = "connected";
       this.emitStatus();
@@ -180,6 +196,8 @@ export class AgentService {
       this.status.connection = "backoff";
       this.recordError(error);
       this.schedulePoll(delay);
+    } finally {
+      this.pollInProgress = false;
     }
   }
 
