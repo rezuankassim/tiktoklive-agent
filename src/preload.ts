@@ -8,6 +8,7 @@ import type {
 } from "./shared/types";
 
 const api: RendererApi = {
+  platform: process.platform,
   getStatus: () => ipcRenderer.invoke("status:get") as Promise<AgentStatus>,
   pair: (input: PairInput) =>
     ipcRenderer.invoke("pair", input) as Promise<void>,
@@ -24,6 +25,8 @@ const api: RendererApi = {
       "updates:status:get",
     ) as Promise<UpdateCheckResult | null>,
   installUpdate: () => ipcRenderer.invoke("updates:install") as Promise<void>,
+  openWindowsRelease: () =>
+    ipcRenderer.invoke("updates:open-windows-release") as Promise<void>,
   onUpdateStatus: (callback: (result: UpdateCheckResult) => void) => {
     const listener = (
       _event: Electron.IpcRendererEvent,

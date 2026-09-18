@@ -86,6 +86,7 @@ export interface UpdateCheckResult {
 }
 
 export interface RendererApi {
+  platform: string;
   getStatus(): Promise<AgentStatus>;
   pair(input: PairInput): Promise<void>;
   unpair(): Promise<void>;
@@ -96,6 +97,7 @@ export interface RendererApi {
   checkForUpdates(): Promise<UpdateCheckResult>;
   getUpdateStatus(): Promise<UpdateCheckResult | null>;
   installUpdate(): Promise<void>;
+  openWindowsRelease(): Promise<void>;
   onUpdateStatus(callback: (result: UpdateCheckResult) => void): () => void;
   onStatus(callback: (status: AgentStatus) => void): () => void;
 }

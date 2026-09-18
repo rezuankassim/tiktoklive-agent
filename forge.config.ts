@@ -1,5 +1,5 @@
 import type { ForgeConfig } from "@electron-forge/shared-types";
-import { MakerSquirrel } from "@electron-forge/maker-squirrel";
+import { MakerWix } from "@electron-forge/maker-wix";
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerRpm } from "@electron-forge/maker-rpm";
@@ -35,11 +35,16 @@ const config: ForgeConfig = {
   },
   rebuildConfig: {},
   makers: [
-    new MakerSquirrel({
-      name: "LockbahPrintAgent",
-      setupExe: "LockbahPrintAgentSetup.exe",
-      setupIcon: path.resolve(__dirname, "assets", "icon.ico"),
-      loadingGif: false,
+    new MakerWix({
+      name: "Lockbah Print Agent",
+      shortName: "LockbahPrintAgent",
+      manufacturer: "Lockbah",
+      programFilesFolderName: "Lockbah Print Agent",
+      exe: "LockbahPrintAgent",
+      arch: "x64",
+      icon: path.resolve(__dirname, "assets", "icon.ico"),
+      appUserModelId: "com.lockbah.LockbahPrintAgent",
+      upgradeCode: "41DE4A19-4C8A-4975-9135-8E34D4F3C3BF",
       ...(process.env.WINDOWS_CERTIFICATE_FILE &&
       process.env.WINDOWS_CERTIFICATE_PASSWORD
         ? {

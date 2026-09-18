@@ -60,9 +60,6 @@ import type {
 import "./index.css";
 
 type Notice = { message: string; error: boolean } | null;
-const isFirstRun =
-  new URLSearchParams(window.location.search).get("firstRun") === "1";
-
 function updateIsRunning(result: UpdateCheckResult | null): boolean {
   return result?.status === "checking" || result?.status === "available";
 }
@@ -425,7 +422,7 @@ function Dashboard({
           </Alert>
         ) : null}
 
-        {updateStatus ? (
+        {window.lockbah.platform !== "win32" && updateStatus ? (
           <Alert
             variant={
               updateStatus.status === "error" ||
@@ -488,32 +485,39 @@ function Dashboard({
           type="button"
           variant="outline"
           disabled={
-            updateIsRunning(updateStatus) ||
-            updateStatus?.status === "installing"
+            window.lockbah.platform !== "win32" &&
+            (updateIsRunning(updateStatus) ||
+              updateStatus?.status === "installing")
           }
           onClick={() =>
-            void (updateStatus?.status === "downloaded"
-              ? installUpdate()
-              : checkForUpdates())
+            void (window.lockbah.platform === "win32"
+              ? window.lockbah.openWindowsRelease()
+              : updateStatus?.status === "downloaded"
+                ? installUpdate()
+                : checkForUpdates())
           }
         >
-          {updateIsRunning(updateStatus) ||
-          updateStatus?.status === "installing" ? (
+          {window.lockbah.platform === "win32" ? (
+            <DownloadIcon data-icon="inline-start" />
+          ) : updateIsRunning(updateStatus) ||
+            updateStatus?.status === "installing" ? (
             <Spinner data-icon="inline-start" />
           ) : updateStatus?.status === "downloaded" ? (
             <DownloadIcon data-icon="inline-start" />
           ) : (
             <RefreshCwIcon data-icon="inline-start" />
           )}
-          {updateStatus?.status === "downloaded"
-            ? "Restart and install"
-            : updateStatus?.status === "available"
-              ? "Downloading update"
-              : updateStatus?.status === "checking"
-                ? "Checking updates"
-                : updateStatus?.status === "installing"
-                  ? "Installing update"
-                  : "Check updates"}
+          {window.lockbah.platform === "win32"
+            ? "Get latest MSI"
+            : updateStatus?.status === "downloaded"
+              ? "Restart and install"
+              : updateStatus?.status === "available"
+                ? "Downloading update"
+                : updateStatus?.status === "checking"
+                  ? "Checking updates"
+                  : updateStatus?.status === "installing"
+                    ? "Installing update"
+                    : "Check updates"}
         </Button>
         <Button
           type="button"
@@ -534,32 +538,8 @@ function Dashboard({
   );
 }
 
-function SplashScreen() {
-  return (
-    <main
-      className="flex min-h-screen items-center justify-center bg-background p-6"
-      aria-label="Starting Lockbah Print Agent"
-    >
-      <div className="flex flex-col items-center gap-6 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-500">
-        <img
-          src="./logo.png"
-          alt="Lockbah"
-          className="size-40 rounded-3xl object-contain shadow-sm"
-        />
-        <div className="flex flex-col gap-1">
-          <p className="font-heading text-2xl font-semibold tracking-wide uppercase">
-            Lockbah
-          </p>
-          <p className="text-sm text-muted-foreground">Print Agent</p>
-        </div>
-      </div>
-    </main>
-  );
-}
-
 function App() {
   const [status, setStatus] = useState<AgentStatus | null>(null);
-  const [showFirstRunSplash, setShowFirstRunSplash] = useState(isFirstRun);
 
   const refresh = useCallback(async () => {
     setStatus(await window.lockbah.getStatus());
@@ -570,14 +550,6 @@ function App() {
     void refresh();
     return unsubscribe;
   }, [refresh]);
-
-  useEffect(() => {
-    if (!showFirstRunSplash) return;
-    const timeout = window.setTimeout(() => setShowFirstRunSplash(false), 2000);
-    return () => window.clearTimeout(timeout);
-  }, [showFirstRunSplash]);
-
-  if (showFirstRunSplash) return <SplashScreen />;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-6 p-6">

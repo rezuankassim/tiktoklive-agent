@@ -34,24 +34,22 @@ Logs use JSON Lines and redact authorization values, device and lease tokens, pa
 
 ## Signing and releases
 
-The Windows installer uses Squirrel.Windows. CI must provide `WINDOWS_CERTIFICATE_FILE` and `WINDOWS_CERTIFICATE_PASSWORD` when it runs `npm run make`. Do not commit either value. The Windows release workflow sets `LOCKBAH_UPDATE_URL` to Electron's GitHub update service. The repository and its releases must be public for installed apps to reach that service. The application requests:
+The Windows installer is an MSI built with WiX Toolset v3.14.0. Build it on Windows with WiX installed. CI publishes the MSI to GitHub Releases. The Windows app's **Get latest MSI** button opens the latest release page; users install new MSI versions manually. Keep the WiX `upgradeCode` in `forge.config.ts` unchanged so later MSI releases replace earlier MSI releases. The installer can be signed by setting `WINDOWS_CERTIFICATE_FILE` and `WINDOWS_CERTIFICATE_PASSWORD` in CI. Do not commit either value.
 
-```text
-https://update.electronjs.org/{owner}/{repository}/{platform}-{arch}/{current_version}
-```
-
-The service reads the repository's latest GitHub Release and returns the Squirrel update response. Release commands are:
+Release commands are:
 
 ```sh
 npm ci
 npm run check
-LOCKBAH_UPDATE_URL=https://update.electronjs.org/rezuankassim/tiktoklive-agent npm run make
+npm run make -- --arch=x64
 ```
+
+Existing Squirrel installations do not upgrade into MSI installations. Before installing the first MSI, quit the tray agent, uninstall the old Lockbah Print Agent from Windows Installed apps, then install the MSI. Keep the app data under `%APPDATA%\Lockbah Print Agent` so the device pairing and settings remain available. After installation, confirm the printer and **Start after sign-in** setting, then run a test print. Installing both editions side by side can leave duplicate startup entries.
 
 The Lockbah owner still needs to provide:
 
 - A Windows Authenticode code-signing certificate, its encrypted CI file, and its password.
-- A public GitHub repository and release, or a private update service that hosts the Squirrel artifacts.
+- A public GitHub release page for MSI downloads, or a replacement download location in the app.
 - The release repository or artifact bucket retention policy.
 - The pilot thermal printer model, Windows driver version, target DPI, stock definition, and a physical test device.
 - Apple Developer ID Application and installer identities, notarization credentials, and an update-feed decision before macOS release work starts.

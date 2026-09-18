@@ -8,7 +8,6 @@ permissions:
 
 env:
   LOCKBAH_API_BASE_URL: https://lockbah.com
-  LOCKBAH_UPDATE_URL: https://update.electronjs.org/${{ github.repository }}
 
 jobs:
   build:
@@ -27,6 +26,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: choco install wixtoolset --version=3.14.0 --yes --no-progress
+
       - name: Read and verify package version
         id: package-version
         shell: pwsh
@@ -41,67 +44,22 @@ jobs:
       - name: Build Windows installer
         run: npm run make -- --arch=x64
 
-      - name: Verify updater manifest version
-        shell: pwsh
-        run: |
-          $version = "${{ steps.package-version.outputs.version }}"
-          $manifest = Get-ChildItem out/make -Filter RELEASES -Recurse | Select-Object -First 1
-          if (-not $manifest) {
-            throw "The Squirrel RELEASES manifest was not generated"
-          }
-          $expectedPackage = "LockbahPrintAgent-$version-full.nupkg"
-          if ((Get-Content $manifest.FullName -Raw) -notmatch [regex]::Escape($expectedPackage)) {
-            throw "The updater manifest does not contain $expectedPackage"
-          }
-
       - name: Test Windows installer
         shell: pwsh
         run: |
-          $version = "${{ steps.package-version.outputs.version }}"
-          $setup = Get-ChildItem out/make -Filter LockbahPrintAgentSetup.exe -Recurse | Select-Object -First 1
-          if (-not $setup) {
-            throw "The Windows setup executable was not generated"
+          $msi = Get-ChildItem out/make -Filter *.msi -Recurse | Select-Object -First 1
+          if (-not $msi) {
+            throw "The Windows MSI was not generated"
           }
-
-          $sevenZip = Resolve-Path "node_modules/electron-winstaller/vendor/7z.exe"
-          $archiveListing = & $sevenZip l $setup.FullName
-          if ($LASTEXITCODE -ne 0) {
-            throw "Could not inspect the generated Windows setup"
-          }
-          if ($archiveListing -match "background\.gif") {
-            throw "The Windows setup still contains a Squirrel loading GIF"
-          }
-
-          $startedAt = Get-Date
-          $installer = Start-Process -FilePath $setup.FullName -ArgumentList "--silent" -PassThru
-          if (-not $installer.WaitForExit(120000)) {
-            $installer.Kill()
-            throw "The Windows installer did not exit within two minutes"
-          }
+          $log = Join-Path $env:RUNNER_TEMP "lockbah-msi-install.log"
+          $installer = Start-Process msiexec.exe -ArgumentList @('/i', "`"$($msi.FullName)`"", '/qn', '/norestart', '/L*v', "`"$log`"") -Wait -PassThru
           if ($installer.ExitCode -ne 0) {
-            throw "The Windows installer exited with code $($installer.ExitCode)"
+            Get-Content $log -Tail 100
+            throw "The Windows MSI exited with code $($installer.ExitCode)"
           }
-
-          $installedVersion = Join-Path $env:LOCALAPPDATA "LockbahPrintAgent/app-$version"
-          $deadline = (Get-Date).AddSeconds(30)
-          while (-not (Test-Path $installedVersion) -and (Get-Date) -lt $deadline) {
-            Start-Sleep -Milliseconds 500
-          }
-          if (-not (Test-Path $installedVersion)) {
-            throw "The installer did not create $installedVersion"
-          }
-
-          Start-Sleep -Seconds 15
-          Get-Process LockbahPrintAgent -ErrorAction SilentlyContinue | Stop-Process -Force
-          $squirrelCrashes = Get-WinEvent -FilterHashtable @{
-            LogName = "Application"
-            StartTime = $startedAt
-          } -ErrorAction SilentlyContinue | Where-Object {
-            $_.Id -in 1000, 1026 -and $_.Message -match "Update\.exe|Squirrel\.Update"
-          }
-          if ($squirrelCrashes) {
-            $squirrelCrashes | Format-List TimeCreated, Id, ProviderName, Message
-            throw "Squirrel crashed while installing the generated setup"
+          $exe = Join-Path $env:ProgramFiles "Lockbah Print Agent/LockbahPrintAgent.exe"
+          if (-not (Test-Path $exe)) {
+            throw "The MSI did not install $exe"
           }
 
       - name: Upload build artifacts
@@ -119,6 +77,4 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            out/make/**/*.exe
-            out/make/**/RELEASES
-            out/make/**/*.nupkg
+            out/make/**/*.msi

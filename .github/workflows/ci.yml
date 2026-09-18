@@ -20,7 +20,7 @@ jobs:
       - run: npm test
       - run: npm run package
 
-  windows-package:
+  windows-msi:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,4 +29,5 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run package
+      - run: choco install wixtoolset --version=3.14.0 --yes --no-progress
+      - run: npm run make -- --arch=x64

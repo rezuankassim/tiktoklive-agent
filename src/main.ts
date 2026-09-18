@@ -7,10 +7,10 @@ import {
   Menu,
   nativeImage,
   safeStorage,
+  shell,
   Tray,
 } from "electron";
 import path from "node:path";
-import started from "electron-squirrel-startup";
 import type {
   PairInput,
   SettingsPatch,
@@ -29,12 +29,13 @@ import {
 import { SettingsStore } from "./main/settings-store";
 import { TokenVault } from "./main/token-vault";
 
-const shouldStartApplication = !started && app.requestSingleInstanceLock();
-const isSquirrelFirstRun = process.argv.includes("--squirrel-firstrun");
+const shouldStartApplication = app.requestSingleInstanceLock();
+const windowsReleaseUrl =
+  "https://github.com/rezuankassim/tiktoklive-agent/releases/latest";
 
 if (!shouldStartApplication) app.quit();
 if (shouldStartApplication && process.platform === "win32") {
-  app.setAppUserModelId("com.squirrel.LockbahPrintAgent.LockbahPrintAgent");
+  app.setAppUserModelId("com.lockbah.LockbahPrintAgent");
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -78,11 +79,7 @@ function trayIconPath(): string {
 }
 
 function configureUpdates(): void {
-  if (
-    !app.isPackaged ||
-    !LOCKBAH_UPDATE_URL ||
-    !["win32", "darwin"].includes(process.platform)
-  )
+  if (!app.isPackaged || !LOCKBAH_UPDATE_URL || process.platform !== "darwin")
     return;
   const platform = `${process.platform}-${process.arch}`;
   const feedUrl = `${LOCKBAH_UPDATE_URL.replace(/\/$/, "")}/${platform}/${app.getVersion()}`;
@@ -133,13 +130,10 @@ function configureUpdates(): void {
 
 function loadWindowContent(window: BrowserWindow): void {
   if (!app.isPackaged && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    const developmentUrl = new URL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    if (isSquirrelFirstRun) developmentUrl.searchParams.set("firstRun", "1");
-    void window.loadURL(developmentUrl.toString());
+    void window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
     void window.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
-      { query: isSquirrelFirstRun ? { firstRun: "1" } : {} },
     );
   }
 }
@@ -329,10 +323,10 @@ async function bootstrap(): Promise<void> {
         status: "unavailable",
         message: "Update checks are only available in an installed build.",
       });
-    if (!["win32", "darwin"].includes(process.platform))
+    if (process.platform !== "darwin")
       return setUpdateStatus({
         status: "unavailable",
-        message: "Automatic updates are available on Windows and macOS.",
+        message: "Install the latest Windows MSI from the release page.",
       });
     if (!LOCKBAH_UPDATE_URL)
       return setUpdateStatus({
@@ -357,6 +351,9 @@ async function bootstrap(): Promise<void> {
   });
   ipcMain.handle("updates:status:get", () => updateStatus);
   ipcMain.handle("updates:install", () => installDownloadedUpdate());
+  ipcMain.handle("updates:open-windows-release", () =>
+    shell.openExternal(windowsReleaseUrl),
+  );
 
   const icon = nativeImage.createFromPath(trayIconPath());
   if (icon.isEmpty()) throw new Error("The tray icon could not be loaded.");
@@ -379,12 +376,8 @@ async function bootstrap(): Promise<void> {
   loadWindowContent(mainWindow);
   const openedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin;
   if (!openedAtLogin || !service.getStatus().paired) showWindow();
-  if (app.isPackaged && LOCKBAH_UPDATE_URL) {
-    if (isSquirrelFirstRun) {
-      setTimeout(() => autoUpdater.checkForUpdates(), 10_000);
-    } else {
-      void autoUpdater.checkForUpdates();
-    }
+  if (app.isPackaged && LOCKBAH_UPDATE_URL && process.platform === "darwin") {
+    void autoUpdater.checkForUpdates();
   }
 }
 
